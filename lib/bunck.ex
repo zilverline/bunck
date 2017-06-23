@@ -14,11 +14,7 @@ defmodule Bunck do
     |> headers(client)
     |> authenticate(client)
     |> sign(client)
-    |> format_request()
-    |> do_request()
-    |> process_response()
-    |> validate_response(client)
-    |> process_response_json()
+    |> do_request(client)
   end
 
   defp headers(request, client) do
@@ -73,24 +69,26 @@ defmodule Bunck do
     |> Enum.join("\n")
   end
 
-  defp client_private_key(client) do
-    client.client_private_key
-    |> :public_key.pem_decode()
-    |> List.first()
-    |> :public_key.pem_entry_decode()
-  end
-
-  defp format_request(request) do
+  defp format_request_for_hackney(request) do
     %{request | method: request.method |> String.downcase,
       url: "https://sandbox.public.api.bunq.com#{request.path}",
       payload: request.payload |> Poison.encode!(),
       options: request.options || [],
     }
+    |> Map.take([:method, :url, :headers, :payload, :options])
   end
 
-  defp do_request(request) do
-    request |> Map.take([:method, :url, :headers, :payload, :options])
-    :hackney.request(request.method, request.url, request.headers, request.payload, request.options)
+  defp do_request(request, client) do
+    request
+    |> do_hackney_request()
+    |> process_response()
+    |> validate_response(client)
+    |> process_response_json()
+  end
+
+  defp do_hackney_request(request) do
+    r = request |> format_request_for_hackney()
+    :hackney.request(r.method, r.url, r.headers, r.payload, r.options)
   end
 
   defp process_response({:ok, status, headers, hackney_client}) do
@@ -124,6 +122,11 @@ defmodule Bunck do
     end
   end
 
+  defp process_response_json({:ok, status, headers, body}) do
+    {:ok, decoded_body} = Poison.decode(body)
+    {:ok, status, headers, decoded_body}
+  end
+
   defp server_public_key(client) do
     client.server_public_key
     |> :public_key.pem_decode()
@@ -131,8 +134,10 @@ defmodule Bunck do
     |> :public_key.pem_entry_decode()
   end
 
-  defp process_response_json({:ok, status, headers, body}) do
-    {:ok, decoded_body} = Poison.decode(body)
-    {:ok, status, headers, decoded_body}
+  defp client_private_key(client) do
+    client.client_private_key
+    |> :public_key.pem_decode()
+    |> List.first()
+    |> :public_key.pem_entry_decode()
   end
 end
