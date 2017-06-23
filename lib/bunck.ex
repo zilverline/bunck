@@ -39,6 +39,33 @@ defmodule Bunck do
     |> do_request(client)
   end
 
+  def newer_url(response_json, client) do
+    path = response_json |> Map.fetch!("Pagination") |> Map.fetch!("newer_url")
+    if path do
+      %Bunck.Pagination{path: path} |> request(client)
+    else
+      {:error, "No newer_url"}
+    end
+  end
+
+  def older_url(response_json, client) do
+    path = response_json |> Map.fetch!("Pagination") |> Map.fetch!("older_url")
+    if path do
+      %Bunck.Pagination{path: path} |> request(client)
+    else
+      {:error, "No older_url"}
+    end
+  end
+
+  def future_url(response_json, client) do
+    path = response_json |> Map.fetch!("Pagination") |> Map.fetch!("future_url")
+    if path do
+      %Bunck.Pagination{path: path} |> request(client)
+    else
+      {:error, "No future_url"}
+    end
+  end
+
   defp headers(request, client) do
     %Bunck.Request{request | headers: (request.headers || []) ++ (client.headers || []) ++ default_headers()}
   end

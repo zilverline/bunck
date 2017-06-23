@@ -25,7 +25,7 @@ defimpl Bunck.Request, for: Bunck.SessionServer.Post do
 end
 
 defimpl Bunck.Request, for: Bunck.Payment.List do
-  def request(payload, client), do: %Bunck.Request{method: "GET", path: "/v1/user/#{payload.user_id}/monetary-account/#{payload.monetary_account_id}/payment", payload: %{}}
+  def request(payload, client), do: %Bunck.Request{method: "GET", path: "/v1/user/#{payload.user_id}/monetary-account/#{payload.monetary_account_id}/payment?count=2", payload: %{}}
 end
 
 defimpl Bunck.Request, for: Bunck.User.Get do
@@ -36,9 +36,10 @@ defimpl Bunck.Request, for: Bunck.User.List do
   def request(payload, client), do: %Bunck.Request{method: "GET", path: "/v1/user", payload: %{}}
 end
 
-# defimpl Bunck.Request, for: Bunck.DraftPayment.Post do
-#   def request(payload, client) do
-#     %Bunck.Request{method: "POST", path: "/v1/user/#{i.user_id}/monetary-account/#{i.account_id}/draft-payment", payload: payload}
-#   end
-# end
+defimpl Bunck.Request, for: Bunck.MonetaryAccount.List do
+  def request(payload, client), do: %Bunck.Request{method: "GET", path: "/v1/user/#{payload.user_id}/monetary-account", payload: %{}}
+end
 
+defimpl Bunck.Request, for: Bunck.Pagination do
+  def request(payload, client), do: %Bunck.Request{method: "GET", path: payload.path, payload: %{}}
+end

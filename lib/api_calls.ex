@@ -24,3 +24,9 @@ defmodule Bunck.User do
   defmodule Get, do: defstruct [:user_id]
   defmodule List, do: defstruct []
 end
+
+defmodule Bunck.MonetaryAccount do
+  defmodule List, do: defstruct [:user_id]
+end
+
+defmodule Bunck.Pagination, do: defstruct [:path]
