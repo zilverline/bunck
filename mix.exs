@@ -9,6 +9,8 @@ defmodule Bunck.Mixfile do
      deps_path: "../../deps",
      lockfile: "../../mix.lock",
      elixir: "~> 1.4",
+     package: package(),
+     description: "A productive Elixir client for the Bunq API",
      build_embedded: Mix.env == :prod,
      start_permanent: Mix.env == :prod,
      deps: deps()]
@@ -20,6 +22,14 @@ defmodule Bunck.Mixfile do
   def application do
     # Specify extra applications you'll use from Erlang/Elixir
     [extra_applications: [:logger, :hackney, :crypto]]
+  end
+
+  defp package do
+    [
+      maintainers: ["Derek Kraan"],
+      licenses: ["MIT"],
+      links: %{"Github" => "https://github.com/zilverline/bunck"},
+    ]
   end
 
   # Dependencies can be Hex packages:
@@ -40,6 +50,7 @@ defmodule Bunck.Mixfile do
       hackney: "~> 1.8",
       uuid: "~> 1.1",
       poison: "~> 3.1",
+      ex_doc: "~> 0.16",
     ]
   end
 end
