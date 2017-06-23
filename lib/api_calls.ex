@@ -17,6 +17,7 @@ defmodule Bunck.SessionServer do
 end
 
 defmodule Bunck.Payment do
+  defmodule Post, do: defstruct [:user_id, :monetary_account_id, :amount, :counterparty_alias, :description, :attachment, :merchant_reference]
   defmodule List, do: defstruct [:user_id, :monetary_account_id]
 end
 

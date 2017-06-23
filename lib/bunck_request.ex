@@ -25,7 +25,11 @@ defimpl Bunck.Request, for: Bunck.SessionServer.Post do
 end
 
 defimpl Bunck.Request, for: Bunck.Payment.List do
-  def request(payload, client), do: %Bunck.Request{method: "GET", path: "/v1/user/#{payload.user_id}/monetary-account/#{payload.monetary_account_id}/payment?count=2", payload: %{}}
+  def request(payload, client), do: %Bunck.Request{method: "GET", path: "/v1/user/#{payload.user_id}/monetary-account/#{payload.monetary_account_id}/payment", payload: %{}}
+end
+
+defimpl Bunck.Request, for: Bunck.Payment.Post do
+  def request(payload, client), do: %Bunck.Request{method: "POST", path: "/v1/user/#{payload.user_id}/monetary-account/#{payload.monetary_account_id}/payment", payload: payload |> Map.drop([:user_id, :monetary_account_id])}
 end
 
 defimpl Bunck.Request, for: Bunck.User.Get do
