@@ -40,6 +40,6 @@ defimpl Bunck.Request, for: Bunck.MonetaryAccount.List do
   def request(payload, client), do: %Bunck.Request{method: "GET", path: "/v1/user/#{payload.user_id}/monetary-account", payload: %{}}
 end
 
-defimpl Bunck.Request, for: Bunck.Pagination do
+defimpl Bunck.Request, for: Bunck.GetPath do
   def request(payload, client), do: %Bunck.Request{method: "GET", path: payload.path, payload: %{}}
 end

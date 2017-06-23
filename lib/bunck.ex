@@ -39,30 +39,12 @@ defmodule Bunck do
     |> do_request(client)
   end
 
-  def newer_url(response_json, client) do
-    path = response_json |> Map.fetch!("Pagination") |> Map.fetch!("newer_url")
+  def get_page(response_json, which_page, client) do
+    path = response_json |> Map.fetch!("Pagination") |> Map.fetch!(which_page)
     if path do
-      %Bunck.Pagination{path: path} |> request(client)
+      %Bunck.GetPath{path: path} |> request(client)
     else
-      {:error, "No newer_url"}
-    end
-  end
-
-  def older_url(response_json, client) do
-    path = response_json |> Map.fetch!("Pagination") |> Map.fetch!("older_url")
-    if path do
-      %Bunck.Pagination{path: path} |> request(client)
-    else
-      {:error, "No older_url"}
-    end
-  end
-
-  def future_url(response_json, client) do
-    path = response_json |> Map.fetch!("Pagination") |> Map.fetch!("future_url")
-    if path do
-      %Bunck.Pagination{path: path} |> request(client)
-    else
-      {:error, "No future_url"}
+      {:error, "No #{which_page}"}
     end
   end
 
