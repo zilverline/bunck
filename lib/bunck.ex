@@ -79,25 +79,22 @@ defmodule Bunck do
   end
 
   defp do_request(request, client) do
-    request
-    |> do_hackney_request()
-    |> process_response()
-    |> validate_response(client)
-    |> process_response_json()
+    with {:ok, status, headers, body} <- do_hackney_request(request),
+    {:ok, status, headers, body} <- validate_response({status, headers, body}, client),
+    {:ok, status, headers, body} <- process_response_json({status, headers, body}) do
+      {:ok, status, headers, body}
+    end
   end
 
   defp do_hackney_request(request) do
     r = request |> format_request_for_hackney()
-    :hackney.request(r.method, r.url, r.headers, r.payload, r.options)
+
+    with {:ok, status, headers, body_stream} <- :hackney.request(r.method, r.url, r.headers, r.payload, r.options),
+         {:ok, body} <- :hackney.body(body_stream),
+    do: {:ok, status, headers, body}
   end
 
-  defp process_response({:ok, status, headers, hackney_client}) do
-    {:ok, body} = :hackney.body(hackney_client)
-    {:ok, status, headers, body}
-  end
-  defp process_response(response), do: response # on error, simply return to the user
-
-  defp validate_response({:ok, status, headers, body}, client) do
+  defp validate_response({status, headers, body}, client) do
     headers_string =
       headers
       |> Enum.filter(fn header ->
@@ -118,13 +115,12 @@ defmodule Bunck do
     if verified do
       {:ok, status, headers, body}
     else
-      {:error, "Could not verify response signature"}
+      {:error, "Could not verify response signature. Check that you have the correct server public key."}
     end
   end
 
-  defp process_response_json({:ok, status, headers, body}) do
-    {:ok, decoded_body} = Poison.decode(body)
-    {:ok, status, headers, decoded_body}
+  defp process_response_json({status, headers, body}) do
+    with {:ok, decoded_body} <- Poison.decode(body), do: {:ok, status, headers, decoded_body}
   end
 
   defp server_public_key(client) do
