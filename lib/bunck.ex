@@ -1,12 +1,32 @@
 defmodule Bunck do
   @moduledoc """
-  Documentation for Bunck.
-  """
+  Bunck is a client for the Bunq API.
 
-  @doc """
   Example:
-    client = %Bunck.Client{...}
-    %Bunck.Installation.Post{} |> Bunck.request(client)
+    api_key = "..."
+    session_token = "..."
+    installation_token = "..."
+
+    {:ok, client_private_key} = File.read("bunq_private.pem")
+    {:ok, client_public_key} = File.read("bunq_public.pem")
+
+    client = %Bunck.Client{
+      api_key: api_key,
+      client_private_key: client_private_key,
+      client_public_key: client_public_key,
+      server_public_key: server_public_key,
+      installation_token: installation_token,
+      session_token: session_token
+    }
+
+    %Bunck.Installation.Post{} |> Bunck.request(client) # get an installation token
+
+    %Bunck.DeviceServer.Post{description: "development laptop"} |> Bunck.request(client) # register a device server with Bunq
+
+    %Bunck.SessionServer.Post{secret: user_api_key} |> Bunck.request(client) # get a session using a user's api key, you can use this session token to make further requests
+
+    %Bunck.User.List{} |> Bunck.request(client) # get all users
+    %Bunck.User.Get{user_id: 4} |> Bunck.request(client) # get user with id 4
   """
 
   def request(payload, client) do
@@ -43,7 +63,7 @@ defmodule Bunck do
     %{request | headers: ["X-Bunq-Client-Authentication": client.session_token] ++ request.headers}
   end
 
-  def sign(request, client) do
+  defp sign(request, client) do
     %{request | headers: ["X-Bunq-Client-Signature": signature(request, client)] ++ request.headers}
   end
 
