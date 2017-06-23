@@ -3,6 +3,7 @@ defmodule Bunck do
   Bunck is a client for the Bunq API.
 
   Example:
+  ```elixir
     api_key = "..."
     session_token = "..."
     installation_token = "..."
@@ -27,6 +28,7 @@ defmodule Bunck do
 
     %Bunck.User.List{} |> Bunck.request(client) # get all users
     %Bunck.User.Get{user_id: 4} |> Bunck.request(client) # get user with id 4
+  ```
   """
 
   def request(payload, client) do
