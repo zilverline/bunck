@@ -11,10 +11,9 @@ defmodule Bunck do
 
   def request(payload, client) do
     Bunck.Request.request(payload, client)
-    |> assign_client(client)
-    |> headers()
-    |> authenticate()
-    |> sign()
+    |> headers(client)
+    |> authenticate(client)
+    |> sign(client)
     |> format_request()
     |> do_request()
     |> process_response()
@@ -22,10 +21,8 @@ defmodule Bunck do
     |> process_response_json()
   end
 
-  defp assign_client(request, client), do: %{request | client: client}
-
-  defp headers(request) do
-    %Bunck.Request{request | headers: (request.headers || []) ++ default_headers()}
+  defp headers(request, client) do
+    %Bunck.Request{request | headers: (request.headers || []) ++ (client.headers || []) ++ default_headers()}
   end
 
   defp default_headers do
@@ -39,23 +36,23 @@ defmodule Bunck do
     ]
   end
 
-  defp authenticate(request = %Bunck.Request{payload: %Bunck.Installation.Post{}}), do: request
-  defp authenticate(request = %Bunck.Request{payload: %Bunck.SessionServer.Post{}}) do
-    %{request | headers: ["X-Bunq-Client-Authentication": request.client.installation_token] ++ request.headers}
+  defp authenticate(request = %Bunck.Request{payload: %Bunck.Installation.Post{}}, _client), do: request
+  defp authenticate(request = %Bunck.Request{payload: %Bunck.SessionServer.Post{}}, client) do
+    %{request | headers: ["X-Bunq-Client-Authentication": client.installation_token] ++ request.headers}
   end
-  defp authenticate(request = %Bunck.Request{payload: %Bunck.DeviceServer.Post{}}) do
-    %{request | headers: ["X-Bunq-Client-Authentication": request.client.installation_token] ++ request.headers}
+  defp authenticate(request = %Bunck.Request{payload: %Bunck.DeviceServer.Post{}}, client) do
+    %{request | headers: ["X-Bunq-Client-Authentication": client.installation_token] ++ request.headers}
   end
-  defp authenticate(request) do
-    %{request | headers: ["X-Bunq-Client-Authentication": request.client.session_token] ++ request.headers}
-  end
-
-  def sign(request) do
-    %{request | headers: ["X-Bunq-Client-Signature": signature(request)] ++ request.headers}
+  defp authenticate(request, client) do
+    %{request | headers: ["X-Bunq-Client-Authentication": client.session_token] ++ request.headers}
   end
 
-  defp signature(_ = %Bunck.Request{payload: %Bunck.Installation.Post{}}), do: ""
-  defp signature(request) do
+  def sign(request, client) do
+    %{request | headers: ["X-Bunq-Client-Signature": signature(request, client)] ++ request.headers}
+  end
+
+  defp signature(_ = %Bunck.Request{payload: %Bunck.Installation.Post{}}, _client), do: ""
+  defp signature(request, client) do
     headers_string =
       request.headers
       |> Enum.filter(fn header ->
@@ -65,7 +62,7 @@ defmodule Bunck do
       |> header_signature_string()
 
     "#{request.method |> String.upcase} #{request.path}\n#{headers_string}\n\n#{request.payload |> Poison.encode!}"
-    |> :public_key.sign(:sha256, client_private_key(request.client))
+    |> :public_key.sign(:sha256, client_private_key(client))
     |> :base64.encode()
   end
 
@@ -92,12 +89,12 @@ defmodule Bunck do
   end
 
   defp do_request(request) do
-    request |> Map.take([:method, :url, :headers, :payload, :options]) |> IO.inspect
+    request |> Map.take([:method, :url, :headers, :payload, :options])
     :hackney.request(request.method, request.url, request.headers, request.payload, request.options)
   end
 
-  defp process_response({:ok, status, headers, client}) do
-    {:ok, body} = :hackney.body(client)
+  defp process_response({:ok, status, headers, hackney_client}) do
+    {:ok, body} = :hackney.body(hackney_client)
     {:ok, status, headers, body}
   end
   defp process_response(response), do: response # on error, simply return to the user
