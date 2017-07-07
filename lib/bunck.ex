@@ -33,33 +33,13 @@ defmodule Bunck do
     import Supervisor.Spec
 
     children = [
-      worker(Bunck.DeviceServer, [])
+      worker(Bunck.DeviceServerWrapper, [])
     ]
+
     Supervisor.start_link(children, [strategy: :one_for_one, name: Bunck.Supervisor])
   end
 
   defmodule Response, do: defstruct [:status, :headers, :body, :client]
-
-  defimpl Enumerable, for: Response do
-    defmodule ResponseList, do: defstruct [:list, :next_path, :client]
-
-    def count(_), do: {:error, __MODULE__}
-    def member?(_,_), do: {:error, __MODULE__}
-
-    def reduce(_, {:halt, acc}, _fun), do: {:halted, acc}
-    def reduce(response = %Response{}, acc, fun) do
-      reduce(%ResponseList{list: response.body["Response"], next_path: response.body["Pagination"]["older_url"], client: response.client}, acc, fun)
-    end
-    def reduce(response_list, {:suspend, acc}, fun), do: {:suspended, acc, &reduce(response_list, &1, fun)}
-    def reduce(response_list = %{list: [], next_path: nil}, {:cont, acc}, fun), do: {:done, acc}
-    def reduce(response_list = %{list: []}, {:cont, acc}, fun) do
-      {:ok, new_response} = %Bunck.GetPath{path: response_list.next_path} |> Bunck.request(response_list.client)
-      reduce(new_response, {:cont, acc}, fun)
-    end
-    def reduce(response_list = %{list: [h|t]}, {:cont, acc}, fun) do
-      reduce(%{response_list | list: t}, fun.(h, acc), fun)
-    end
-  end
 
   def request(payload, client) do
     Bunck.Request.request(payload, client)
@@ -70,16 +50,7 @@ defmodule Bunck do
   end
 
   def with_session(fun) do
-    Bunck.DeviceServer.get_session_client() |> fun.()
-  end
-
-  def get_page(response_json, which_page, client) do
-    path = response_json |> Map.fetch!("Pagination") |> Map.fetch!(which_page)
-    if path do
-      %Bunck.GetPath{path: path} |> request(client)
-    else
-      {:error, "No #{which_page}"}
-    end
+    Bunck.DeviceServerWrapper.get_session_client() |> fun.()
   end
 
   defp headers(request, client) do
@@ -200,68 +171,5 @@ defmodule Bunck do
     |> :public_key.pem_decode()
     |> List.first()
     |> :public_key.pem_entry_decode()
-  end
-
-  def add_installation_to_client(client, description \\ "Elixir Server") do
-    private_key = generate_private_key()
-    public_key = public_key_pem_from_private_key(private_key)
-    new_client = %{client | client_public_key: public_key, client_private_key: private_key}
-    {:ok, installation_resp} = %Bunck.Installation.Post{} |> Bunck.request(new_client)
-    server_public_key =
-      installation_resp.body
-      |> Map.get("Response")
-      |> Enum.find(fn
-                     %{"ServerPublicKey" => _} -> true
-                     _ -> false
-      end)
-      |> Map.get("ServerPublicKey") |> Map.get("server_public_key")
-
-    installation_token =
-      installation_resp.body
-      |> Map.get("Response")
-      |> Enum.find(fn
-                     %{"Token" => _} -> true
-                     _ -> false
-      end)
-      |> Map.get("Token") |> Map.get("token")
-    new_new_client = %{new_client | installation_token: installation_token, server_public_key: server_public_key}
-    %Bunck.DeviceServer.Post{description: description} |> Bunck.request(new_new_client)
-    new_new_client
-  end
-
-  def add_session_to_client(client) do
-    {:ok, session_resp} = %Bunck.SessionServer.Post{secret: client.api_key} |> Bunck.request(client)
-    session_token =
-      session_resp.body
-      |> Map.get("Response")
-      |> Enum.find(fn
-                     %{"Token" => _} -> true
-                     _ -> false
-      end)
-      |> Map.get("Token") |> Map.get("token")
-    %{client | session_token: session_token}
-  end
-
-  defp generate_private_key do
-    :public_key.generate_key({:rsa, 2048, 65537})
-  end
-
-  defp public_key_pem_from_private_key(private_key) do
-    pubkey = {:RSAPublicKey, elem(private_key, 2), elem(private_key, 3)}
-    pem_entry = :public_key.pem_entry_encode(:SubjectPublicKeyInfo, pubkey)
-    :public_key.pem_encode([pem_entry])
-  end
-
-  defmodule DeviceServer do
-    def start_link do
-      Agent.start_link(fn() ->
-        %Bunck.Client{api_key: Application.get_env(Bunck, :api_key)} |> Bunck.add_installation_to_client()
-      end, name: __MODULE__)
-    end
-
-    def get_session_client do
-      Agent.get(__MODULE__, fn(client) -> client end)
-      |> Bunck.add_session_to_client()
-    end
   end
 end
