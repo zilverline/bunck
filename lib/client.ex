@@ -1,6 +1,21 @@
 defmodule Bunck.Client do
   defstruct [:api_key, :client_private_key, :client_public_key, :server_public_key, :installation_token, :session_token, :headers]
+  @moduledoc """
+  Interacts with the Bunq API.
+  """
 
+  @doc """
+  Performs the given request.
+
+  Returns `{:ok, %Bunck.Response{}}`
+
+  When there is an error, drops out with `{:error, reason}`
+
+  ## Examples
+    iex> Bunck.Client.Request(%Bunck.User.List{}, client)
+    {:ok, %Bunck.Response{...}}
+
+  """
   def request(payload, client) do
     Bunck.Request.request(payload, client)
     |> headers(client)
@@ -9,6 +24,18 @@ defmodule Bunck.Client do
     |> do_request(client)
   end
 
+  @doc """
+  Requests a session from the Bunq API and adds this to the Client struct, yielding it to the given function.
+
+  This is the normal way to make a request.
+
+  Returns the result of `fun.(client)`
+
+  ## Examples
+    iex> Bunck.Client.with_session(fn(client) -> %Bunck.User.List{} |> Bunck.Client.request(client) end)
+    {:ok, %Bunck.Response{...}}
+
+  """
   def with_session(fun) do
     Bunck.DeviceServerWrapper.get_session_client() |> fun.()
   end
