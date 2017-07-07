@@ -8,7 +8,7 @@ defmodule Bunck.Mixfile do
      config_path: "config/config.exs",
      deps_path: "deps",
      lockfile: "mix.lock",
-     elixir: "~> 1.4",
+     elixir: "~> 1.4 and >= 1.4.5",
      package: package(),
      description: "A productive Elixir client for the Bunq API",
      build_embedded: Mix.env == :prod,
@@ -21,7 +21,8 @@ defmodule Bunck.Mixfile do
   # Type "mix help compile.app" for more information
   def application do
     # Specify extra applications you'll use from Erlang/Elixir
-    [extra_applications: [:logger, :hackney, :crypto]]
+    [ mod: {Bunck, []},
+      extra_applications: [:logger, :hackney, :crypto]]
   end
 
   defp package do

@@ -1,42 +1,42 @@
 defmodule Bunck do
+  use Application
+
   @moduledoc """
   Bunck is a client for the Bunq API.
 
-  Example:
+  Configure an API key in `config.exs`:
   ```elixir
-    api_key = "..."
-    session_token = "..."
-    installation_token = "..."
+  config Bunck. api_key: System.get_env("BUNQ_API_KEY")
+  ```
 
-    {:ok, client_private_key} = File.read("bunq_private.pem")
-    {:ok, client_public_key} = File.read("bunq_public.pem")
+  Then you can make calls using the Bunq API. Bunck takes care of public / private keys, installation, device servers, and sessions.
 
-    client = %Bunck.Client{
-      api_key: api_key,
-      client_private_key: client_private_key,
-      client_public_key: client_public_key,
-      server_public_key: server_public_key,
-      installation_token: installation_token,
-      session_token: session_token
-    }
+  Example:
 
-    %Bunck.Installation.Post{} |> Bunck.request(client) # get an installation token
-
-    %Bunck.DeviceServer.Post{description: "development laptop"} |> Bunck.request(client) # register a device server with Bunq
-
-    %Bunck.SessionServer.Post{secret: user_api_key} |> Bunck.request(client) # get a session using a user's api key, you can use this session token to make further requests
-
+  ```elixir
+  Bunck.with_session(fn(client) ->
     %Bunck.User.List{} |> Bunck.request(client) # get all users
     %Bunck.User.Get{user_id: 4} |> Bunck.request(client) # get user with id 4
+  end)
   ```
 
-    You can also iterate over a response using `Enum`:
+  You can also iterate over a response using `Enum`:
   ```elixir
-    with {:ok, res} <- %Bunck.Payments.List{...} |> Bunck.request(client),
-    do: Enum.map(fun(payment) -> ... end)
-    ```
+  Bunck.with_session(fn(client) ->
+    with {:ok, res} <- %Bunck.User.List{} |> Bunck.request(client),
+    do: Enum.map(fn(user) -> do_something_with(user) end)
+  end)
   ```
   """
+
+  def start(_type, _args) do
+    import Supervisor.Spec
+
+    children = [
+      worker(Bunck.DeviceServer, [])
+    ]
+    Supervisor.start_link(children, [strategy: :one_for_one, name: Bunck.Supervisor])
+  end
 
   defmodule Response, do: defstruct [:status, :headers, :body, :client]
 
@@ -67,6 +67,10 @@ defmodule Bunck do
     |> authenticate(client)
     |> sign(client)
     |> do_request(client)
+  end
+
+  def with_session(fun) do
+    Bunck.DeviceServer.get_session_client() |> fun.()
   end
 
   def get_page(response_json, which_page, client) do
@@ -119,7 +123,7 @@ defmodule Bunck do
       |> header_signature_string()
 
     "#{request.method |> String.upcase} #{request.path}\n#{headers_string}\n\n#{request.payload |> Poison.encode!}"
-    |> :public_key.sign(:sha256, client_private_key(client))
+    |> :public_key.sign(:sha256, client.client_private_key)
     |> :base64.encode()
   end
 
@@ -155,6 +159,7 @@ defmodule Bunck do
     do: {:ok, status, headers, body}
   end
 
+  defp validate_response({status, headers, body}, %{server_public_key: nil}), do: {:ok, status, headers, body}
   defp validate_response({status, headers, body}, client) do
     headers_string =
       headers
@@ -197,10 +202,66 @@ defmodule Bunck do
     |> :public_key.pem_entry_decode()
   end
 
-  defp client_private_key(client) do
-    client.client_private_key
-    |> :public_key.pem_decode()
-    |> List.first()
-    |> :public_key.pem_entry_decode()
+  def add_installation_to_client(client, description \\ "Elixir Server") do
+    private_key = generate_private_key()
+    public_key = public_key_pem_from_private_key(private_key)
+    new_client = %{client | client_public_key: public_key, client_private_key: private_key}
+    {:ok, installation_resp} = %Bunck.Installation.Post{} |> Bunck.request(new_client)
+    server_public_key =
+      installation_resp.body
+      |> Map.get("Response")
+      |> Enum.find(fn
+                     %{"ServerPublicKey" => _} -> true
+                     _ -> false
+      end)
+      |> Map.get("ServerPublicKey") |> Map.get("server_public_key")
+
+    installation_token =
+      installation_resp.body
+      |> Map.get("Response")
+      |> Enum.find(fn
+                     %{"Token" => _} -> true
+                     _ -> false
+      end)
+      |> Map.get("Token") |> Map.get("token")
+    new_new_client = %{new_client | installation_token: installation_token, server_public_key: server_public_key}
+    %Bunck.DeviceServer.Post{description: description} |> Bunck.request(new_new_client)
+    new_new_client
+  end
+
+  def add_session_to_client(client) do
+    {:ok, session_resp} = %Bunck.SessionServer.Post{secret: client.api_key} |> Bunck.request(client)
+    session_token =
+      session_resp.body
+      |> Map.get("Response")
+      |> Enum.find(fn
+                     %{"Token" => _} -> true
+                     _ -> false
+      end)
+      |> Map.get("Token") |> Map.get("token")
+    %{client | session_token: session_token}
+  end
+
+  defp generate_private_key do
+    :public_key.generate_key({:rsa, 2048, 65537})
+  end
+
+  defp public_key_pem_from_private_key(private_key) do
+    pubkey = {:RSAPublicKey, elem(private_key, 2), elem(private_key, 3)}
+    pem_entry = :public_key.pem_entry_encode(:SubjectPublicKeyInfo, pubkey)
+    :public_key.pem_encode([pem_entry])
+  end
+
+  defmodule DeviceServer do
+    def start_link do
+      Agent.start_link(fn() ->
+        %Bunck.Client{api_key: Application.get_env(Bunck, :api_key)} |> Bunck.add_installation_to_client()
+      end, name: __MODULE__)
+    end
+
+    def get_session_client do
+      Agent.get(__MODULE__, fn(client) -> client end)
+      |> Bunck.add_session_to_client()
+    end
   end
 end
