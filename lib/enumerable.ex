@@ -13,7 +13,7 @@ defimpl Enumerable, for: Bunck.Response do
   def reduce(response_list, {:suspend, acc}, fun), do: {:suspended, acc, &reduce(response_list, &1, fun)}
   def reduce(response_list = %{list: [], next_path: nil}, {:cont, acc}, fun), do: {:done, acc}
   def reduce(response_list = %{list: []}, {:cont, acc}, fun) do
-    {:ok, new_response} = %Bunck.GetPath{path: response_list.next_path} |> Bunck.request(response_list.client)
+    {:ok, new_response} = %Bunck.GetPath{path: response_list.next_path} |> Bunck.Client.request(response_list.client)
     reduce(new_response, {:cont, acc}, fun)
   end
   def reduce(response_list = %{list: [h|t]}, {:cont, acc}, fun) do

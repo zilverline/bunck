@@ -19,10 +19,10 @@ Also add `:bunck` to your list of applications.
 
 ```elixir
 Bunck.with_session(fn(client) ->
-  %Bunck.User.List{} |> Bunck.request(client) # get all users
-  %Bunck.User.Get{user_id: 4} |> Bunck.request(client) # get user with id 4
+  %Bunck.User.List{} |> Bunck.Client.request(client) # get all users
+  %Bunck.User.Get{user_id: 4} |> Bunck.Client.request(client) # get user with id 4
 
-  {:ok, users} = %Bunck.User.List{} |> Bunck.request(client)
+  {:ok, users} = %Bunck.User.List{} |> Bunck.Client.request(client)
   users |> Enum.map(fn(user) -> do_something_with(user) end) # iterate over *all* users, pagination included for free
 end)
 ```
