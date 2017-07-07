@@ -9,23 +9,26 @@ by adding `bunck` to your list of dependencies in `mix.exs`:
 
 ```elixir
 def deps do
-  [{:bunck, "~> 0.1.0"}]
+  [{:bunck, "~> 0.1.4"}]
 end
 ```
 
 Also add `:bunck` to your list of applications.
 
-## Usage
+## Usage Example
+
+```elixir
+Bunck.with_session(fn(client) ->
+  %Bunck.User.List{} |> Bunck.request(client) # get all users
+  %Bunck.User.Get{user_id: 4} |> Bunck.request(client) # get user with id 4
+
+  {:ok, users} = %Bunck.User.List{} |> Bunck.request(client)
+  users |> Enum.map(fn(user) -> do_something_with(user) end) # iterate over *all* users, pagination included for free
+end)
+```
 
 ### You'll need
 - An API key (get a developer's API key by chatting with Bunq support).
-- A private / public key pair. This can be generated with the following commands:
-```sh
-openssl genrsa -out bunq_private.pem 2048
-openssl rsa -in bunq_private.pem -pubout -out bunq_public.pem
-```
-
-Never commit these keys to source control!
 
 ### Documentation (including examples) at [hexdocs](https://hexdocs.pm/bunck/api-reference.html).
 
