@@ -18,7 +18,7 @@ Also add `:bunck` to your list of applications.
 ## Usage Example
 
 ```elixir
-Bunck.with_session(fn(client) ->
+Bunck.Client.with_session(fn(client) ->
   %Bunck.User.List{} |> Bunck.Client.request(client) # get all users
   %Bunck.User.Get{user_id: 4} |> Bunck.Client.request(client) # get user with id 4
 
