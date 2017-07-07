@@ -164,19 +164,25 @@ defmodule Bunck do
       end)
       |> header_signature_string()
 
-    signature =
-      headers
-      |> Enum.find(fn(header) -> elem(header, 0) == "X-Bunq-Server-Signature" end)
-      |> elem(1)
-      |> :base64.decode()
+    signature_header =
+      headers |> Enum.find(fn(header) -> elem(header, 0) == "X-Bunq-Server-Signature" end)
 
-    verified = "#{status}\n#{headers_string}\n\n#{body}"
-    |> :public_key.verify(:sha256, signature, server_public_key(client))
+    if signature_header do
+      signature =
+        signature_header
+        |> elem(1)
+        |> :base64.decode()
 
-    if verified do
-      {:ok, status, headers, body}
+      verified = "#{status}\n#{headers_string}\n\n#{body}"
+                 |> :public_key.verify(:sha256, signature, server_public_key(client))
+
+      if verified do
+        {:ok, status, headers, body}
+      else
+        {:error, "Could not verify response signature. Check that you have the correct server public key."}
+      end
     else
-      {:error, "Could not verify response signature. Check that you have the correct server public key."}
+      {:ok, status, headers, body}
     end
   end
 
