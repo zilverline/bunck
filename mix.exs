@@ -49,7 +49,7 @@ defmodule Bunck.Mixfile do
     [
       hackney: "~> 1.8",
       uuid: "~> 1.1",
-      poison: "~> 3.1",
+      poison: "~> 2.0 or ~> 3.0",
       ex_doc: "~> 0.16",
     ]
   end
