@@ -12,8 +12,10 @@ defmodule Bunck.Client do
   When there is an error, drops out with `{:error, reason}`
 
   ## Examples
+  ```elixir
     iex> Bunck.Client.Request(%Bunck.User.List{}, client)
     {:ok, %Bunck.Response{...}}
+  ```
 
   """
   def request(payload, client) do
@@ -32,8 +34,10 @@ defmodule Bunck.Client do
   Returns the result of `fun.(client)`
 
   ## Examples
+  ```elixir
     iex> Bunck.Client.with_session(fn(client) -> %Bunck.User.List{} |> Bunck.Client.request(client) end)
     {:ok, %Bunck.Response{...}}
+  ```
 
   """
   def with_session(fun) do
