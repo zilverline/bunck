@@ -2,7 +2,7 @@
 # and its dependencies with the aid of the Mix.Config module.
 use Mix.Config
 
-config Bunck, api_key: System.get_env("BUNQ_API_KEY")
+config :bunck, api_key: System.get_env("BUNQ_API_KEY")
 
 # This configuration is loaded before any dependency and is restricted
 # to this project. If another project depends on this project, this

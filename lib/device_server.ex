@@ -1,7 +1,7 @@
 defmodule Bunck.DeviceServerWrapper do
   def start_link do
     Agent.start_link(fn() ->
-      %Bunck.Client{api_key: Application.get_env(Bunck, :api_key)} |> add_installation_to_client()
+      %Bunck.Client{api_key: Application.get_env(:bunck, :api_key)} |> add_installation_to_client()
     end, name: __MODULE__)
   end
 
