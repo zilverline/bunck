@@ -6,7 +6,7 @@ defmodule Bunck do
 
   Configure an API key in `config.exs`:
   ```elixir
-  config Bunck. api_key: System.get_env("BUNQ_API_KEY")
+  config Bunck, api_key: System.get_env("BUNQ_API_KEY")
   ```
 
   Then you can make calls using the Bunq API. Bunck takes care of public / private keys, installation, device servers, and sessions.
