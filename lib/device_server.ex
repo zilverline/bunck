@@ -10,6 +10,10 @@ defmodule Bunck.DeviceServerWrapper do
     |> add_session_to_client()
   end
 
+  def get_session_client(api_key) do
+    %Bunck.Client{api_key: api_key} |> add_installation_to_client |> add_session_to_client
+  end
+
   defp add_installation_to_client(client, description \\ "Elixir Server") do
     private_key = generate_private_key()
     public_key = public_key_pem_from_private_key(private_key)

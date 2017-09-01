@@ -44,6 +44,22 @@ defmodule Bunck.Client do
     Bunck.DeviceServerWrapper.get_session_client() |> fun.()
   end
 
+  @doc """
+  Requests a session from the Bunq API with the provided API key and adds this to the Client struct, yielding it to the given function.
+
+  Returns the result of `fun.(client)`
+
+  ## Examples
+  ```elixir
+    iex> Bunck.Client.with_session(api_key, fn(client) -> %Bunck.User.List{} |> Bunck.Client.request(client) end)
+    {:ok, %Bunck.Response{...}}
+  ```
+
+  """
+  def with_session(api_key, fun) do
+    Bunck.DeviceServerWrapper.get_session_client(api_key) |> fun.()
+  end
+
   defp headers(request, client) do
     %Bunck.Request{request | headers: (request.headers || []) ++ (client.headers || []) ++ default_headers()}
   end
